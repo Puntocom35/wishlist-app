@@ -1,0 +1,12 @@
+{
+  "name": "wishlist-app",
+  "version": "1.0.0",
+  "description": "Lista de deseos universal con colaboración familiar",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "deploy": "vercel --prod"
+  },
+  "keywords": ["wishlist", "gifts", "pwa"],
+  "author": "",
+  "license": "MIT"
+}

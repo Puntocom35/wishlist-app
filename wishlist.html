@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Lista de deseos compartida">
+    <title>Mi Lista de Deseos</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: var(--surface);
+            padding: 20px;
+            margin-bottom: 24px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--primary);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .role-badge.collaborator {
+            background: var(--success);
+        }
+
+        .share-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .share-link {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .share-link input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--bg);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-icon {
+            padding: 8px 12px;
+            font-size: 18px;
+        }
+
+        .floating-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: transform 0.2s;
+        }
+
+        .floating-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .star-rating {
+            display: flex;
+            gap: 8px;
+            font-size: 28px;
+        }
+
+        .star {
+            cursor: pointer;
+            color: #d1d5db;
+            transition: color 0.2s;
+        }
+
+        .star.active,
+        .star:hover {
+            color: #fbbf24;
+        }
+
+        .item-grid {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .item-card {
+            background: var(--surface);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s;
+        }
+
+        .item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .item-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: var(--bg);
+        }
+
+        .item-content {
+            padding: 16px;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 8px;
+        }
+
+        .item-title {
+            font-weight: 600;
+            font-size: 16px;
+            line-height: 1.4;
+            flex: 1;
+        }
+
+        .item-price {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-left: 12px;
+        }
+
+        .item-stars {
+            color: #fbbf24;
+            margin: 8px 0;
+        }
+
+        .item-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 13px;
+            display: block;
+            margin-bottom: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .item-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .badge-reserved {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-group {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-suggested {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .collaborators-section {
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .collaborator-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+
+        .paste-hint {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 12px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .item-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 id="listTitle">Mi Lista de Deseos</h1>
+            <span class="role-badge" id="roleBadge">Creador</span>
+            
+            <div class="share-section" id="shareSection">
+                <p style="font-size: 14px; margin-bottom: 8px; color: var(--text-secondary);">Comparte con tu familia:</p>
+                <div class="share-link">
+                    <input type="text" id="shareLink" readonly>
+                    <button class="btn btn-primary" onclick="copyShareLink()">📋 Copiar</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Lista de items del creador -->
+        <div id="ownerSection">
+            <h2 class="section-title">Mi Lista Original</h2>
+            <div class="item-grid" id="ownerItems"></div>
+        </div>
+
+        <!-- Lista completa para colaboradores -->
+        <div id="collaboratorSection" style="display: none;">
+            <h2 class="section-title">Lista de Deseos</h2>
+            <div class="item-grid" id="allItems"></div>
+            
+            <div style="margin-top: 32px;">
+                <h2 class="section-title">Sugerencias de la Familia</h2>
+                <div class="item-grid" id="suggestedItems"></div>
+            </div>
+        </div>
+
+        <!-- Estado vacío -->
+        <div class="empty-state" id="emptyState">
+            <div class="empty-state-icon">🎁</div>
+            <p>Aún no hay regalos en la lista</p>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 12px;">Extrayendo información del producto...</p>
+        </div>
+    </div>
+
+    <!-- Botón flotante para añadir (solo owner) -->
+    <button class="floating-btn" id="addBtn" onclick="openAddModal()">+</button>
+
+    <!-- Modal para añadir regalo -->
+    <div class="modal" id="addModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Añadir Regalo</h2>
+                <button class="close-btn" onclick="closeAddModal()">×</button>
+            </div>
+            
+            <form id="addForm" onsubmit="handleAddItem(event)">
+                <div class="form-group">
+                    <label>URL del Producto</label>
+                    <input type="url" id="itemUrl" placeholder="Pega aquí el enlace del producto" required>
+                    <p class="paste-hint">💡 Copia el enlace desde Amazon, cualquier tienda online, o desde el botón "Compartir"</p>
+                </div>
+                
+                <div id="extractedData" style="display: none;">
+                    <div class="form-group">
+                        <label>Nombre del Regalo</label>
+                        <input type="text" id="itemName" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Precio (opcional)</label>
+                        <input type="text" id="itemPrice" placeholder="Ej: 29.99€">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Imagen (URL)</label>
+                        <input type="url" id="itemImage">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Tu valoración (importancia)</label>
+                        <div class="star-rating" id="starRating">
+                            <span class="star" data-value="1" onclick="setRating(1)">★</span>
+                            <span class="star" data-value="2" onclick="setRating(2)">★</span>
+                            <span class="star" data-value="3" onclick="setRating(3)">★</span>
+                            <span class="star" data-value="4" onclick="setRating(4)">★</span>
+                            <span class="star" data-value="5" onclick="setRating(5)">★</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Notas (opcional)</label>
+                        <textarea id="itemNotes" placeholder="Ej: Talla M, color azul"></textarea>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 8px; margin-top: 20px;">
+                    <button type="button" class="btn btn-primary" id="extractBtn" onclick="extractProductData()">
+                        🔍 Extraer Datos
+                    </button>
+                    <button type="submit" class="btn btn-success" id="saveBtn" style="display: none;">
+                        ✓ Guardar Regalo
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeAddModal()">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para reservar regalo -->
+    <div class="modal" id="reserveModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Reservar Regalo</h2>
+                <button class="close-btn" onclick="closeReserveModal()">×</button>
+            </div>
+            
+            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                Reserva este regalo para que otros no lo compren. El cumpleañero NO verá que lo has reservado.
+            </p>
+            
+            <form id="reserveForm" onsubmit="handleReserveItem(event)">
+                <div class="form-group">
+                    <label>Tu nombre</label>
+                    <input type="text" id="reserverName" required placeholder="Ej: María">
+                </div>
+                
+                <div class="form-group">
+                    <label>¿Quieres ayuda para comprarlo?</label>
+                    <select id="needHelp">
+                        <option value="no">No, lo compro yo solo/a</option>
+                        <option value="yes">Sí, quiero compartir el costo</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 8px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-success" style="flex: 1;">
+                        ✓ Reservar
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeReserveModal()">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Sistema de datos simulado (en producción sería una base de datos)
+        let currentListId = new URLSearchParams(window.location.search).get('list') || 'default';
+        let isOwner = !window.location.search.includes('list=');
+        let currentRating = 3;
+        let currentItemId = null;
+        
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            loadItems();
+            
+            // Soporte para Web Share Target API
+            if ('share' in navigator) {
+                setupShareTarget();
+            }
+        });
+
+        function initializeApp() {
+            const roleBadge = document.getElementById('roleBadge');
+            const shareSection = document.getElementById('shareSection');
+            const addBtn = document.getElementById('addBtn');
+            const ownerSection = document.getElementById('ownerSection');
+            const collaboratorSection = document.getElementById('collaboratorSection');
+            
+            if (isOwner) {
+                roleBadge.textContent = 'Creador';
+                roleBadge.className = 'role-badge';
+                shareSection.style.display = 'block';
+                addBtn.style.display = 'block';
+                ownerSection.style.display = 'block';
+                collaboratorSection.style.display = 'none';
+                
+                // Generar link para compartir
+                const shareUrl = window.location.origin + window.location.pathname + '?list=' + currentListId;
+                document.getElementById('shareLink').value = shareUrl;
+            } else {
+                roleBadge.textContent = 'Colaborador';
+                roleBadge.className = 'role-badge collaborator';
+                shareSection.style.display = 'none';
+                addBtn.textContent = '💡';
+                addBtn.title = 'Añadir sugerencia';
+                addBtn.style.display = 'block';
+                ownerSection.style.display = 'none';
+                collaboratorSection.style.display = 'block';
+            }
+        }
+
+        function loadItems() {
+            const items = getItemsFromStorage();
+            
+            if (items.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('emptyState').style.display = 'none';
+            
+            if (isOwner) {
+                // Owner solo ve sus items originales
+                const ownerItems = items.filter(item => !item.isSuggestion);
+                renderItems(ownerItems, 'ownerItems', true);
+            } else {
+                // Colaboradores ven todo
+                const originalItems = items.filter(item => !item.isSuggestion);
+                const suggestions = items.filter(item => item.isSuggestion);
+                
+                renderItems(originalItems, 'allItems', false);
+                renderItems(suggestions, 'suggestedItems', false);
+            }
+        }
+
+        function renderItems(items, containerId, isOwnerView) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            items.forEach(item => {
+                const card = createItemCard(item, isOwnerView);
+                container.appendChild(card);
+            });
+        }
+
+        function createItemCard(item, isOwnerView) {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            
+            const stars = '★'.repeat(item.rating) + '☆'.repeat(5 - item.rating);
+            const hasImage = item.image && item.image !== '';
+            
+            let statusBadge = '';
+            if (!isOwnerView && item.reserved) {
+                statusBadge = '<span class="item-badge badge-reserved">✓ Reservado por ' + item.reservedBy + '</span>';
+            }
+            if (!isOwnerView && item.needsCollaboration) {
+                statusBadge += '<span class="item-badge badge-group">👥 Busca colaboradores</span>';
+            }
+            if (item.isSuggestion) {
+                statusBadge = '<span class="item-badge badge-suggested">💡 Sugerencia familiar</span>';
+            }
+            
+            let actions = '';
+            if (!isOwnerView && !item.reserved) {
+                actions = `
+                    <div class="item-actions">
+                        <button class="btn btn-primary" onclick="openReserveModal('${item.id}')">
+                            🎁 Reservar
+                        </button>
+                    </div>
+                `;
+            }
+            
+            card.innerHTML = `
+                ${hasImage ? `<img src="${item.image}" alt="${item.name}" class="item-image" onerror="this.style.display='none'">` : ''}
+                <div class="item-content">
+                    <div class="item-header">
+                        <div class="item-title">${item.name}</div>
+                        ${item.price ? `<div class="item-price">${item.price}</div>` : ''}
+                    </div>
+                    <div class="item-stars">${stars}</div>
+                    ${item.url ? `<a href="${item.url}" target="_blank" class="item-link">Ver producto ↗</a>` : ''}
+                    ${item.notes ? `<p style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">${item.notes}</p>` : ''}
+                    ${statusBadge}
+                    ${actions}
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function openAddModal() {
+            document.getElementById('addModal').classList.add('active');
+            document.getElementById('itemUrl').focus();
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.remove('active');
+            document.getElementById('addForm').reset();
+            document.getElementById('extractedData').style.display = 'none';
+            document.getElementById('saveBtn').style.display = 'none';
+            document.getElementById('extractBtn').style.display = 'inline-flex';
+            currentRating = 3;
+            updateStarDisplay();
+        }
+
+        async function extractProductData() {
+            const url = document.getElementById('itemUrl').value.trim();
+            if (!url) {
+                alert('Por favor, pega una URL primero');
+                return;
+            }
+            
+            document.getElementById('loading').classList.add('active');
+            
+            try {
+                // Llamada a la API de Vercel
+                const apiUrl = `/api/extract?url=${encodeURIComponent(url)}`;
+                const response = await fetch(apiUrl);
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('itemName').value = result.data.title;
+                    document.getElementById('itemPrice').value = result.data.price;
+                    document.getElementById('itemImage').value = result.data.image || '';
+                    
+                    document.getElementById('extractedData').style.display = 'block';
+                    document.getElementById('saveBtn').style.display = 'inline-flex';
+                    document.getElementById('extractBtn').style.display = 'none';
+                } else {
+                    alert('No se pudo extraer la información del producto. Intenta con otra URL o completa los datos manualmente.');
+                    // Mostrar formulario para entrada manual
+                    document.getElementById('itemName').value = '';
+                    document.getElementById('extractedData').style.display = 'block';
+                    document.getElementById('saveBtn').style.display = 'inline-flex';
+                    document.getElementById('extractBtn').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al extraer datos. Por favor, completa la información manualmente.');
+                // Mostrar formulario para entrada manual
+                document.getElementById('extractedData').style.display = 'block';
+                document.getElementById('saveBtn').style.display = 'inline-flex';
+                document.getElementById('extractBtn').style.display = 'none';
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+            }
+        }
+
+        function setRating(value) {
+            currentRating = value;
+            updateStarDisplay();
+        }
+
+        function updateStarDisplay() {
+            const stars = document.querySelectorAll('.star');
+            stars.forEach((star, index) => {
+                if (index < currentRating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+
+        function handleAddItem(event) {
+            event.preventDefault();
+            
+            const newItem = {
+                id: Date.now().toString(),
+                name: document.getElementById('itemName').value,
+                price: document.getElementById('itemPrice').value,
+                image: document.getElementById('itemImage').value,
+                url: document.getElementById('itemUrl').value,
+                notes: document.getElementById('itemNotes').value,
+                rating: currentRating,
+                isSuggestion: !isOwner,
+                reserved: false,
+                needsCollaboration: false,
+                reservedBy: null,
+                createdAt: new Date().toISOString()
+            };
+            
+            saveItemToStorage(newItem);
+            closeAddModal();
+            loadItems();
+        }
+
+        function openReserveModal(itemId) {
+            currentItemId = itemId;
+            document.getElementById('reserveModal').classList.add('active');
+        }
+
+        function closeReserveModal() {
+            document.getElementById('reserveModal').classList.remove('active');
+            document.getElementById('reserveForm').reset();
+            currentItemId = null;
+        }
+
+        function handleReserveItem(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('reserverName').value;
+            const needsHelp = document.getElementById('needHelp').value === 'yes';
+            
+            const items = getItemsFromStorage();
+            const item = items.find(i => i.id === currentItemId);
+            
+            if (item) {
+                item.reserved = true;
+                item.reservedBy = name;
+                item.needsCollaboration = needsHelp;
+                localStorage.setItem('wishlist_' + currentListId, JSON.stringify(items));
+            }
+            
+            closeReserveModal();
+            loadItems();
+        }
+
+        function getItemsFromStorage() {
+            const data = localStorage.getItem('wishlist_' + currentListId);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveItemToStorage(item) {
+            const items = getItemsFromStorage();
+            items.push(item);
+            localStorage.setItem('wishlist_' + currentListId, JSON.stringify(items));
+        }
+
+        function copyShareLink() {
+            const input = document.getElementById('shareLink');
+            input.select();
+            document.execCommand('copy');
+            
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✓ Copiado';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+            }, 2000);
+        }
+
+        function setupShareTarget() {
+            // Web Share Target API para recibir shares directos
+            if (window.location.search.includes('share-target')) {
+                const params = new URLSearchParams(window.location.search);
+                const sharedUrl = params.get('url') || params.get('text');
+                if (sharedUrl) {
+                    document.getElementById('itemUrl').value = sharedUrl;
+                    openAddModal();
+                    extractProductData();
+                }
+            }
+        }
+
+        // Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    </script>
+</body>
+</html>
