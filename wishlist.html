@@ -446,6 +446,54 @@
             gap: 4px;
         }
 
+        .list-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary);
+            margin-right: 12px;
+        }
+
+        .list-title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .avatar-picker {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .avatar-option {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+        }
+
+        .avatar-option:hover {
+            transform: scale(1.1);
+            border-color: var(--primary);
+        }
+
+        .avatar-option.selected {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
         @media (max-width: 640px) {
             .container {
                 padding: 12px;
@@ -469,8 +517,13 @@
 <body>
     <div class="container">
         <header>
-            <h1 id="listTitle">Mi Lista de Deseos</h1>
-            <span class="role-badge" id="roleBadge">Creador</span>
+            <div class="list-title-row">
+                <img id="listAvatar" class="list-avatar" src="" alt="Avatar" style="display: none;">
+                <div style="flex: 1;">
+                    <h1 id="listTitle">Mi Lista de Deseos</h1>
+                    <span class="role-badge" id="roleBadge">Creador</span>
+                </div>
+            </div>
             
             <div class="share-section" id="shareSection">
                 <p style="font-size: 14px; margin-bottom: 8px; color: var(--text-secondary);">Comparte con tu familia:</p>
@@ -653,6 +706,25 @@
                 <div class="form-group">
                     <label>Nombre de la Lista</label>
                     <input type="text" id="listName" required placeholder="Ej: Cumpleaños 2024, Navidad, Boda">
+                </div>
+
+                <div class="form-group">
+                    <label>Elige un Avatar</label>
+                    <div class="avatar-picker">
+                        <div class="avatar-option selected" data-avatar="🎂" onclick="selectAvatar('🎂')">🎂</div>
+                        <div class="avatar-option" data-avatar="🎁" onclick="selectAvatar('🎁')">🎁</div>
+                        <div class="avatar-option" data-avatar="🎄" onclick="selectAvatar('🎄')">🎄</div>
+                        <div class="avatar-option" data-avatar="🎃" onclick="selectAvatar('🎃')">🎃</div>
+                        <div class="avatar-option" data-avatar="💝" onclick="selectAvatar('💝')">💝</div>
+                        <div class="avatar-option" data-avatar="🎊" onclick="selectAvatar('🎊')">🎊</div>
+                        <div class="avatar-option" data-avatar="👶" onclick="selectAvatar('👶')">👶</div>
+                        <div class="avatar-option" data-avatar="💍" onclick="selectAvatar('💍')">💍</div>
+                        <div class="avatar-option" data-avatar="🎓" onclick="selectAvatar('🎓')">🎓</div>
+                        <div class="avatar-option" data-avatar="❤️" onclick="selectAvatar('❤️')">❤️</div>
+                        <div class="avatar-option" data-avatar="⭐" onclick="selectAvatar('⭐')">⭐</div>
+                        <div class="avatar-option" data-avatar="🌟" onclick="selectAvatar('🌟')">🌟</div>
+                    </div>
+                    <input type="hidden" id="listAvatar" value="🎂">
                 </div>
 
                 <div class="form-group">
@@ -1076,6 +1148,22 @@
 
         // === GESTIÓN DE LISTAS ===
 
+        window.selectAvatar = function(emoji) {
+            // Remover selección anterior
+            document.querySelectorAll('.avatar-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+
+            // Seleccionar nuevo
+            const selected = document.querySelector(`.avatar-option[data-avatar="${emoji}"]`);
+            if (selected) {
+                selected.classList.add('selected');
+            }
+
+            // Guardar valor
+            document.getElementById('listAvatar').value = emoji;
+        }
+
         async function loadUserLists() {
             try {
                 const listsRef = collection(db, 'user_lists');
@@ -1109,6 +1197,7 @@
                 userId: userId,
                 listId: listId,
                 name: 'Mi Lista de Deseos',
+                avatar: '🎁',
                 eventDate: null,
                 description: '',
                 createdAt: serverTimestamp()
@@ -1141,6 +1230,36 @@
             const currentList = userLists.find(l => l.listId === currentListId);
             if (currentList) {
                 document.getElementById('listTitle').textContent = currentList.name;
+
+                // Actualizar avatar
+                const avatarEl = document.getElementById('listAvatar');
+                if (currentList.avatar) {
+                    // Si es emoji, usar div con texto
+                    if (currentList.avatar.length <= 2) {
+                        // Es emoji
+                        avatarEl.style.display = 'none';
+                        // Crear div para emoji si no existe
+                        let emojiDiv = document.getElementById('listAvatarEmoji');
+                        if (!emojiDiv) {
+                            emojiDiv = document.createElement('div');
+                            emojiDiv.id = 'listAvatarEmoji';
+                            emojiDiv.className = 'list-avatar';
+                            emojiDiv.style.display = 'flex';
+                            emojiDiv.style.alignItems = 'center';
+                            emojiDiv.style.justifyContent = 'center';
+                            emojiDiv.style.fontSize = '32px';
+                            avatarEl.parentNode.insertBefore(emojiDiv, avatarEl);
+                        }
+                        emojiDiv.textContent = currentList.avatar;
+                        emojiDiv.style.display = 'flex';
+                    } else {
+                        // Es URL de imagen
+                        avatarEl.src = currentList.avatar;
+                        avatarEl.style.display = 'block';
+                        const emojiDiv = document.getElementById('listAvatarEmoji');
+                        if (emojiDiv) emojiDiv.style.display = 'none';
+                    }
+                }
 
                 // Actualizar fecha
                 const dateEl = document.getElementById('listDate');
@@ -1186,6 +1305,7 @@
                 userId: userId,
                 listId: listId,
                 name: document.getElementById('listName').value,
+                avatar: document.getElementById('listAvatar').value,
                 eventDate: document.getElementById('listEventDate').value || null,
                 description: document.getElementById('listDescription').value,
                 createdAt: serverTimestamp()
