@@ -407,6 +407,45 @@
             margin-top: 4px;
         }
 
+        .list-manager {
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .list-selector {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            margin-right: 8px;
+            background: var(--bg);
+        }
+
+        .list-info {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .list-info-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
         @media (max-width: 640px) {
             .container {
                 padding: 12px;
@@ -441,6 +480,26 @@
                 </div>
             </div>
         </header>
+
+        <!-- Gestor de listas (solo owner) -->
+        <div class="list-manager" id="listManager" style="display: none;">
+            <div class="list-header">
+                <select class="list-selector" id="listSelector" onchange="switchList()">
+                    <option value="">Mis Listas</option>
+                </select>
+                <button class="btn btn-primary" onclick="openNewListModal()">+ Nueva Lista</button>
+            </div>
+            <div class="list-info" id="listInfo">
+                <div class="list-info-item">
+                    <span>📅</span>
+                    <span id="listDate">Sin fecha</span>
+                </div>
+                <div class="list-info-item">
+                    <span>🎁</span>
+                    <span id="listItemCount">0 regalos</span>
+                </div>
+            </div>
+        </div>
 
         <!-- Lista de items del creador -->
         <div id="ownerSection">
@@ -582,10 +641,46 @@
         </div>
     </div>
 
+    <!-- Modal para crear nueva lista -->
+    <div class="modal" id="newListModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Crear Nueva Lista</h2>
+                <button class="close-btn" onclick="closeNewListModal()">×</button>
+            </div>
+
+            <form id="newListForm" onsubmit="handleCreateList(event)">
+                <div class="form-group">
+                    <label>Nombre de la Lista</label>
+                    <input type="text" id="listName" required placeholder="Ej: Cumpleaños 2024, Navidad, Boda">
+                </div>
+
+                <div class="form-group">
+                    <label>Fecha del Evento (opcional)</label>
+                    <input type="date" id="listEventDate">
+                </div>
+
+                <div class="form-group">
+                    <label>Descripción (opcional)</label>
+                    <textarea id="listDescription" placeholder="Ej: Lista para mi cumpleaños número 30" rows="3"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-success" style="flex: 1;">
+                        ✓ Crear Lista
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeNewListModal()">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, onSnapshot, serverTimestamp, setDoc, getDocs, getDoc, where } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
         // Configuración de Firebase
         const firebaseConfig = {
@@ -602,18 +697,29 @@
         const db = getFirestore(app);
 
         // Variables globales
-        let currentListId = new URLSearchParams(window.location.search).get('list') || generateListId();
+        let currentListId = new URLSearchParams(window.location.search).get('list');
         let isOwner = !window.location.search.includes('list=');
         let currentRating = 3;
         let currentItemId = null;
         let unsubscribe = null;
+        let userId = localStorage.getItem('userId') || generateUserId();
+        let userLists = [];
+
+        function generateUserId() {
+            const id = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('userId', id);
+            return id;
+        }
 
         function generateListId() {
             return 'list_' + Math.random().toString(36).substr(2, 9);
         }
 
         // Inicializar
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (isOwner) {
+                await loadUserLists();
+            }
             initializeUI();
             loadItemsRealtime();
             
@@ -629,6 +735,7 @@
             const addBtn = document.getElementById('addBtn');
             const ownerSection = document.getElementById('ownerSection');
             const collaboratorSection = document.getElementById('collaboratorSection');
+            const listManager = document.getElementById('listManager');
 
             if (isOwner) {
                 roleBadge.textContent = 'Creador';
@@ -637,6 +744,7 @@
                 addBtn.style.display = 'block';
                 ownerSection.style.display = 'block';
                 collaboratorSection.style.display = 'none';
+                listManager.style.display = 'block';
 
                 // Generar link para compartir
                 const shareUrl = window.location.origin + window.location.pathname + '?list=' + currentListId;
@@ -650,6 +758,7 @@
                 addBtn.style.display = 'block';
                 ownerSection.style.display = 'none';
                 collaboratorSection.style.display = 'block';
+                listManager.style.display = 'none';
             }
         }
 
@@ -682,6 +791,12 @@
                     // Owner solo ve sus items originales
                     const ownerItems = items.filter(item => !item.isSuggestion);
                     renderItems(ownerItems, 'ownerItems', true);
+
+                    // Actualizar contador
+                    const countEl = document.getElementById('listItemCount');
+                    if (countEl) {
+                        countEl.textContent = `${ownerItems.length} regalo${ownerItems.length !== 1 ? 's' : ''}`;
+                    }
                 } else {
                     // Colaboradores ven todo
                     const originalItems = items.filter(item => !item.isSuggestion);
@@ -956,6 +1071,148 @@
                     window.openAddModal();
                     window.extractProductData();
                 }
+            }
+        }
+
+        // === GESTIÓN DE LISTAS ===
+
+        async function loadUserLists() {
+            try {
+                const listsRef = collection(db, 'user_lists');
+                const q = query(listsRef, where('userId', '==', userId));
+                const querySnapshot = await getDocs(q);
+
+                userLists = [];
+                querySnapshot.forEach((doc) => {
+                    userLists.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Si no tiene listas, crear una por defecto
+                if (userLists.length === 0) {
+                    await createDefaultList();
+                } else {
+                    // Si no hay lista seleccionada, usar la primera
+                    if (!currentListId) {
+                        currentListId = userLists[0].listId;
+                    }
+                    updateListSelector();
+                    updateListInfo();
+                }
+            } catch (error) {
+                console.error('Error al cargar listas:', error);
+            }
+        }
+
+        async function createDefaultList() {
+            const listId = generateListId();
+            const listData = {
+                userId: userId,
+                listId: listId,
+                name: 'Mi Lista de Deseos',
+                eventDate: null,
+                description: '',
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                await addDoc(collection(db, 'user_lists'), listData);
+                currentListId = listId;
+                userLists = [{ id: listId, ...listData }];
+                updateListSelector();
+            } catch (error) {
+                console.error('Error al crear lista por defecto:', error);
+            }
+        }
+
+        function updateListSelector() {
+            const selector = document.getElementById('listSelector');
+            selector.innerHTML = '';
+
+            userLists.forEach(list => {
+                const option = document.createElement('option');
+                option.value = list.listId;
+                option.textContent = list.name;
+                option.selected = list.listId === currentListId;
+                selector.appendChild(option);
+            });
+        }
+
+        function updateListInfo() {
+            const currentList = userLists.find(l => l.listId === currentListId);
+            if (currentList) {
+                document.getElementById('listTitle').textContent = currentList.name;
+
+                // Actualizar fecha
+                const dateEl = document.getElementById('listDate');
+                if (currentList.eventDate) {
+                    const date = new Date(currentList.eventDate);
+                    dateEl.textContent = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+                } else {
+                    dateEl.textContent = 'Sin fecha';
+                }
+            }
+        }
+
+        window.switchList = function() {
+            const selector = document.getElementById('listSelector');
+            currentListId = selector.value;
+            updateListInfo();
+
+            // Recargar items
+            if (unsubscribe) {
+                unsubscribe();
+            }
+            loadItemsRealtime();
+
+            // Actualizar URL
+            const newUrl = window.location.origin + window.location.pathname + '?list=' + currentListId;
+            document.getElementById('shareLink').value = newUrl;
+        }
+
+        window.openNewListModal = function() {
+            document.getElementById('newListModal').classList.add('active');
+        }
+
+        window.closeNewListModal = function() {
+            document.getElementById('newListModal').classList.remove('active');
+            document.getElementById('newListForm').reset();
+        }
+
+        window.handleCreateList = async function(event) {
+            event.preventDefault();
+
+            const listId = generateListId();
+            const listData = {
+                userId: userId,
+                listId: listId,
+                name: document.getElementById('listName').value,
+                eventDate: document.getElementById('listEventDate').value || null,
+                description: document.getElementById('listDescription').value,
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                await addDoc(collection(db, 'user_lists'), listData);
+                userLists.push({ id: listId, ...listData });
+                currentListId = listId;
+
+                updateListSelector();
+                updateListInfo();
+                window.closeNewListModal();
+
+                // Recargar items
+                if (unsubscribe) {
+                    unsubscribe();
+                }
+                loadItemsRealtime();
+
+                // Actualizar URL de compartir
+                const newUrl = window.location.origin + window.location.pathname + '?list=' + currentListId;
+                document.getElementById('shareLink').value = newUrl;
+
+            } catch (error) {
+                console.error('Error al crear lista:', error);
+                alert('Error al crear la lista. Inténtalo de nuevo.');
             }
         }
 
