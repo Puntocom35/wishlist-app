@@ -11,7 +11,13 @@ INSTRUCCIONES PARA CONFIGURAR REGLAS DE FIRESTORE
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Permitir acceso a las listas de regalos
     match /lists/{listId}/{document=**} {
+      allow read, write: true;
+    }
+
+    // Permitir acceso a los metadatos de listas de usuarios
+    match /user_lists/{docId} {
       allow read, write: true;
     }
   }
