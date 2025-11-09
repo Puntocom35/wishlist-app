@@ -1,0 +1,32 @@
+INSTRUCCIONES PARA CONFIGURAR REGLAS DE FIRESTORE
+==================================================
+
+1. Ve a: https://console.firebase.google.com/
+2. Selecciona tu proyecto: wishlist-app-f1db0
+3. En el menú izquierdo, haz clic en: "Firestore Database"
+4. Haz clic en la pestaña: "Reglas"
+5. BORRA TODO el contenido actual
+6. COPIA Y PEGA exactamente esto:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /lists/{listId}/{document=**} {
+      allow read, write: true;
+    }
+  }
+}
+
+7. Haz clic en el botón "Publicar" (arriba a la derecha)
+8. Espera 1-2 minutos para que se apliquen los cambios
+
+IMPORTANTE:
+- Estas reglas permiten acceso público (OK para uso familiar)
+- Si ves un warning de seguridad, ignóralo (es normal para esta configuración)
+- Después de publicar, cierra y vuelve a abrir tu app
+
+VERIFICAR QUE FUNCIONÓ:
+1. Abre: test-simple.html en tu navegador
+2. Haz clic en "1. Escribir Dato"
+3. Si ves "✅ Dato escrito correctamente!" → ¡Funciona!
+4. Si ves error de permisos → Espera 2 minutos y vuelve a intentar

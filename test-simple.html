@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Firebase Simple</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        .success { color: green; }
+        .error { color: red; }
+        #log { background: #f0f0f0; padding: 10px; margin-top: 20px; min-height: 200px; }
+    </style>
+</head>
+<body>
+    <h1>Test Firebase - Wishlist App</h1>
+    <button onclick="testWrite()">1. Escribir Dato</button>
+    <button onclick="testRead()">2. Leer Datos</button>
+    <div id="log"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCfVu9ejgIeNcdkAoFcT62LELf73Yccvhk",
+            authDomain: "wishlist-app-f1db0.firebaseapp.com",
+            projectId: "wishlist-app-f1db0",
+            storageBucket: "wishlist-app-f1db0.firebasestorage.app",
+            messagingSenderId: "930125137957",
+            appId: "1:930125137957:web:dba43c86dc3b61198417cc"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        function log(msg, type = 'info') {
+            const div = document.getElementById('log');
+            const className = type === 'error' ? 'error' : 'success';
+            div.innerHTML += `<p class="${className}">${new Date().toLocaleTimeString()}: ${msg}</p>`;
+        }
+
+        window.testWrite = async function() {
+            log('Intentando escribir dato de prueba...');
+            try {
+                const testItem = {
+                    name: 'Regalo de Prueba',
+                    price: '10€',
+                    rating: 5,
+                    isSuggestion: false,
+                    reserved: false,
+                    createdAt: serverTimestamp()
+                };
+
+                const docRef = await addDoc(collection(db, 'lists', 'test_list', 'items'), testItem);
+                log(`✅ Dato escrito correctamente! ID: ${docRef.id}`, 'success');
+                log('Ve a Firebase Console > Firestore para verificar', 'info');
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                if (error.code === 'permission-denied') {
+                    log('⚠️ Problema de permisos. Revisa las reglas de Firestore.', 'error');
+                }
+            }
+        }
+
+        window.testRead = async function() {
+            log('Intentando leer datos...');
+            try {
+                const querySnapshot = await getDocs(collection(db, 'lists', 'test_list', 'items'));
+                log(`✅ Se encontraron ${querySnapshot.size} documentos`, 'success');
+
+                querySnapshot.forEach((doc) => {
+                    log(`  📄 ${doc.id}: ${doc.data().name}`, 'info');
+                });
+
+                if (querySnapshot.size === 0) {
+                    log('⚠️ No hay datos. Primero ejecuta el Test 1.', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        log('✅ Firebase inicializado correctamente', 'success');
+        log('Haz clic en los botones para probar', 'info');
+    </script>
+</body>
+</html>

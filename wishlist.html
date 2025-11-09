@@ -764,7 +764,7 @@
             return card;
         }
 
-        function openAddModal() {
+        window.openAddModal = function() {
             document.getElementById('addModal').classList.add('active');
 
             // Mostrar campo de nombre si es colaborador
@@ -779,7 +779,7 @@
             document.getElementById('itemUrl').focus();
         }
 
-        function closeAddModal() {
+        window.closeAddModal = function() {
             document.getElementById('addModal').classList.remove('active');
             document.getElementById('addForm').reset();
             document.getElementById('extractedData').style.display = 'none';
@@ -789,21 +789,21 @@
             updateStarDisplay();
         }
 
-        async function extractProductData() {
+        window.extractProductData = async function() {
             const url = document.getElementById('itemUrl').value.trim();
             if (!url) {
                 alert('Por favor, pega una URL primero');
                 return;
             }
-            
+
             document.getElementById('loading').classList.add('active');
-            
+
             try {
                 // Llamada a la API de Vercel
                 const apiUrl = `/api/extract?url=${encodeURIComponent(url)}`;
                 const response = await fetch(apiUrl);
                 const result = await response.json();
-                
+
                 if (result.success) {
                     document.getElementById('itemName').value = result.data.title;
                     document.getElementById('itemPrice').value = result.data.price;
@@ -832,7 +832,7 @@
             }
         }
 
-        function setRating(value) {
+        window.setRating = function(value) {
             currentRating = value;
             updateStarDisplay();
         }
@@ -848,7 +848,7 @@
             });
         }
 
-        async function handleAddItem(event) {
+        window.handleAddItem = async function(event) {
             event.preventDefault();
 
             const newItem = {
@@ -868,25 +868,25 @@
 
             try {
                 await addDoc(collection(db, 'lists', currentListId, 'items'), newItem);
-                closeAddModal();
+                window.closeAddModal();
             } catch (error) {
                 console.error('Error al guardar:', error);
                 alert('Error al guardar el regalo. Inténtalo de nuevo.');
             }
         }
 
-        function openReserveModal(itemId) {
+        window.openReserveModal = function(itemId) {
             currentItemId = itemId;
             document.getElementById('reserveModal').classList.add('active');
         }
 
-        function closeReserveModal() {
+        window.closeReserveModal = function() {
             document.getElementById('reserveModal').classList.remove('active');
             document.getElementById('reserveForm').reset();
             currentItemId = null;
         }
 
-        async function handleReserveItem(event) {
+        window.handleReserveItem = async function(event) {
             event.preventDefault();
 
             const name = document.getElementById('reserverName').value;
@@ -899,14 +899,14 @@
                     reservedBy: name,
                     needsCollaboration: needsHelp
                 });
-                closeReserveModal();
+                window.closeReserveModal();
             } catch (error) {
                 console.error('Error al reservar:', error);
                 alert('Error al reservar el regalo. Inténtalo de nuevo.');
             }
         }
 
-        async function deleteItem(itemId) {
+        window.deleteItem = async function(itemId) {
             if (!confirm('¿Estás seguro de que quieres eliminar este regalo?')) {
                 return;
             }
@@ -920,17 +920,30 @@
         }
 
 
-        function copyShareLink() {
+        window.copyShareLink = function() {
             const input = document.getElementById('shareLink');
             input.select();
-            document.execCommand('copy');
-            
-            const btn = event.target;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '✓ Copiado';
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-            }, 2000);
+
+            // Usar la API moderna de clipboard si está disponible
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(input.value).then(() => {
+                    const btn = event.target;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '✓ Copiado';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                    }, 2000);
+                });
+            } else {
+                // Fallback para navegadores antiguos
+                document.execCommand('copy');
+                const btn = event.target;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✓ Copiado';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            }
         }
 
         function setupShareTarget() {
@@ -940,8 +953,8 @@
                 const sharedUrl = params.get('url') || params.get('text');
                 if (sharedUrl) {
                     document.getElementById('itemUrl').value = sharedUrl;
-                    openAddModal();
-                    extractProductData();
+                    window.openAddModal();
+                    window.extractProductData();
                 }
             }
         }
