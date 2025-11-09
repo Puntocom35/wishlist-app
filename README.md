@@ -1,21 +1,51 @@
-# 🎁 Lista de Deseos Universal
+# 🎁 Wishlist App v2.0 - Lista de Deseos Familiar
 
-Aplicación web para crear y compartir listas de deseos con tu familia, con captura universal de productos y colaboración para regalos grupales.
+> **Aplicación web con sincronización en tiempo real para crear y compartir listas de deseos con tu familia**
 
-## ✨ Características
+[![Firebase](https://img.shields.io/badge/Firebase-Firestore-orange?logo=firebase)](https://firebase.google.com/)
+[![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)](https://vercel.com/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-### Para el Creador (Cumpleañero)
-- ✅ Añade productos de cualquier tienda online
-- ⭐ Valora cada regalo del 1 al 5 estrellas
-- 🔗 Comparte tu lista con un simple enlace
-- 🙈 **No ves lo que añaden o comentan tus familiares** (mantiene la sorpresa)
+---
 
-### Para los Colaboradores (Familia)
-- 👀 Ven toda la lista con prioridades
-- 🎁 Reservan regalos de forma anónima
-- 👥 Piden ayuda para compras grupales
-- 💡 Añaden sugerencias que el cumpleañero NO ve
-- 📱 Sin instalaciones, solo abren el enlace
+## 🚀 Inicio Rápido (5 minutos)
+
+**¿Primera vez aquí?** Lee **[INICIO-RAPIDO.md](INICIO-RAPIDO.md)** ⭐
+
+```bash
+# 1. Configurar Firebase (ver INICIO-RAPIDO.md)
+# 2. Instalar dependencias
+npm install
+# 3. Desplegar
+npm run deploy
+```
+
+---
+
+## ✨ Características v2.0
+
+### 🎯 Nuevas Funcionalidades
+
+- ✅ **Sincronización en tiempo real** con Firebase Firestore
+- ✅ **Sistema multi-lista** - Cada persona puede tener su propia lista
+- ✅ **Extracción automática de datos** de Amazon y otras tiendas
+- ✅ **Campo de nombre** para colaboradores al añadir sugerencias
+- ✅ **Eliminar deseos** - El creador puede borrar items
+- ✅ **PWA instalable** - Funciona como app nativa
+
+### 👥 Roles
+
+#### Creador (Administrador)
+- ✅ Añadir y eliminar regalos
+- ✅ Ver sugerencias de la familia con nombre del colaborador
+- ✅ Compartir lista vía enlace único
+- ✅ **NO ve** qué regalos están reservados (sorpresa!)
+
+#### Colaborador (Familia)
+- ✅ Ver todos los regalos de la lista
+- ✅ Reservar regalos para comprar
+- ✅ Sugerir nuevos regalos con su nombre
+- ✅ Ver qué regalos ya están reservados
 
 ## 📱 Cómo Usar
 

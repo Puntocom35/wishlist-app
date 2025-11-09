@@ -484,12 +484,18 @@
             </div>
             
             <form id="addForm" onsubmit="handleAddItem(event)">
+                <div class="form-group" id="collaboratorNameGroup" style="display: none;">
+                    <label>Tu nombre</label>
+                    <input type="text" id="collaboratorName" placeholder="Ej: María">
+                    <p class="paste-hint">💡 Para que el creador sepa quién sugiere este regalo</p>
+                </div>
+
                 <div class="form-group">
                     <label>URL del Producto</label>
                     <input type="url" id="itemUrl" placeholder="Pega aquí el enlace del producto" required>
                     <p class="paste-hint">💡 Copia el enlace desde Amazon, cualquier tienda online, o desde el botón "Compartir"</p>
                 </div>
-                
+
                 <div id="extractedData" style="display: none;">
                     <div class="form-group">
                         <label>Nombre del Regalo</label>
@@ -576,17 +582,40 @@
         </div>
     </div>
 
-    <script>
-        // Sistema de datos simulado (en producción sería una base de datos)
-        let currentListId = new URLSearchParams(window.location.search).get('list') || 'default';
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCfVu9ejgIeNcdkAoFcT62LELf73Yccvhk",
+            authDomain: "wishlist-app-f1db0.firebaseapp.com",
+            projectId: "wishlist-app-f1db0",
+            storageBucket: "wishlist-app-f1db0.firebasestorage.app",
+            messagingSenderId: "930125137957",
+            appId: "1:930125137957:web:dba43c86dc3b61198417cc"
+            };
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Variables globales
+        let currentListId = new URLSearchParams(window.location.search).get('list') || generateListId();
         let isOwner = !window.location.search.includes('list=');
         let currentRating = 3;
         let currentItemId = null;
-        
+        let unsubscribe = null;
+
+        function generateListId() {
+            return 'list_' + Math.random().toString(36).substr(2, 9);
+        }
+
         // Inicializar
         document.addEventListener('DOMContentLoaded', function() {
-            initializeApp();
-            loadItems();
+            initializeUI();
+            loadItemsRealtime();
             
             // Soporte para Web Share Target API
             if ('share' in navigator) {
@@ -594,13 +623,13 @@
             }
         });
 
-        function initializeApp() {
+        function initializeUI() {
             const roleBadge = document.getElementById('roleBadge');
             const shareSection = document.getElementById('shareSection');
             const addBtn = document.getElementById('addBtn');
             const ownerSection = document.getElementById('ownerSection');
             const collaboratorSection = document.getElementById('collaboratorSection');
-            
+
             if (isOwner) {
                 roleBadge.textContent = 'Creador';
                 roleBadge.className = 'role-badge';
@@ -608,7 +637,7 @@
                 addBtn.style.display = 'block';
                 ownerSection.style.display = 'block';
                 collaboratorSection.style.display = 'none';
-                
+
                 // Generar link para compartir
                 const shareUrl = window.location.origin + window.location.pathname + '?list=' + currentListId;
                 document.getElementById('shareLink').value = shareUrl;
@@ -624,28 +653,47 @@
             }
         }
 
-        function loadItems() {
-            const items = getItemsFromStorage();
-            
-            if (items.length === 0) {
-                document.getElementById('emptyState').style.display = 'block';
-                return;
+        // Cargar items con sincronización en tiempo real
+        function loadItemsRealtime() {
+            if (unsubscribe) {
+                unsubscribe();
             }
-            
-            document.getElementById('emptyState').style.display = 'none';
-            
-            if (isOwner) {
-                // Owner solo ve sus items originales
-                const ownerItems = items.filter(item => !item.isSuggestion);
-                renderItems(ownerItems, 'ownerItems', true);
-            } else {
-                // Colaboradores ven todo
-                const originalItems = items.filter(item => !item.isSuggestion);
-                const suggestions = items.filter(item => item.isSuggestion);
-                
-                renderItems(originalItems, 'allItems', false);
-                renderItems(suggestions, 'suggestedItems', false);
-            }
+
+            const itemsRef = collection(db, 'lists', currentListId, 'items');
+            const q = query(itemsRef);
+
+            unsubscribe = onSnapshot(q, (snapshot) => {
+                const items = [];
+                snapshot.forEach((doc) => {
+                    items.push({ id: doc.id, ...doc.data() });
+                });
+
+                if (items.length === 0) {
+                    document.getElementById('emptyState').style.display = 'block';
+                    document.getElementById('ownerItems').innerHTML = '';
+                    document.getElementById('allItems').innerHTML = '';
+                    document.getElementById('suggestedItems').innerHTML = '';
+                    return;
+                }
+
+                document.getElementById('emptyState').style.display = 'none';
+
+                if (isOwner) {
+                    // Owner solo ve sus items originales
+                    const ownerItems = items.filter(item => !item.isSuggestion);
+                    renderItems(ownerItems, 'ownerItems', true);
+                } else {
+                    // Colaboradores ven todo
+                    const originalItems = items.filter(item => !item.isSuggestion);
+                    const suggestions = items.filter(item => item.isSuggestion);
+
+                    renderItems(originalItems, 'allItems', false);
+                    renderItems(suggestions, 'suggestedItems', false);
+                }
+            }, (error) => {
+                console.error('Error al cargar items:', error);
+                alert('Error al conectar con la base de datos. Verifica tu conexión.');
+            });
         }
 
         function renderItems(items, containerId, isOwnerView) {
@@ -673,11 +721,22 @@
                 statusBadge += '<span class="item-badge badge-group">👥 Busca colaboradores</span>';
             }
             if (item.isSuggestion) {
-                statusBadge = '<span class="item-badge badge-suggested">💡 Sugerencia familiar</span>';
+                const suggestedByText = item.suggestedBy ? ' de ' + item.suggestedBy : '';
+                statusBadge = '<span class="item-badge badge-suggested">💡 Sugerencia' + suggestedByText + '</span>';
             }
             
             let actions = '';
-            if (!isOwnerView && !item.reserved) {
+            if (isOwnerView) {
+                // Botón de eliminar para el creador
+                actions = `
+                    <div class="item-actions">
+                        <button class="btn btn-secondary" onclick="deleteItem('${item.id}')" style="background: var(--danger); color: white;">
+                            🗑️ Eliminar
+                        </button>
+                    </div>
+                `;
+            } else if (!item.reserved) {
+                // Botón de reservar para colaboradores
                 actions = `
                     <div class="item-actions">
                         <button class="btn btn-primary" onclick="openReserveModal('${item.id}')">
@@ -707,6 +766,16 @@
 
         function openAddModal() {
             document.getElementById('addModal').classList.add('active');
+
+            // Mostrar campo de nombre si es colaborador
+            if (!isOwner) {
+                document.getElementById('collaboratorNameGroup').style.display = 'block';
+                document.getElementById('collaboratorName').required = true;
+            } else {
+                document.getElementById('collaboratorNameGroup').style.display = 'none';
+                document.getElementById('collaboratorName').required = false;
+            }
+
             document.getElementById('itemUrl').focus();
         }
 
@@ -779,11 +848,10 @@
             });
         }
 
-        function handleAddItem(event) {
+        async function handleAddItem(event) {
             event.preventDefault();
-            
+
             const newItem = {
-                id: Date.now().toString(),
                 name: document.getElementById('itemName').value,
                 price: document.getElementById('itemPrice').value,
                 image: document.getElementById('itemImage').value,
@@ -791,15 +859,20 @@
                 notes: document.getElementById('itemNotes').value,
                 rating: currentRating,
                 isSuggestion: !isOwner,
+                suggestedBy: !isOwner ? document.getElementById('collaboratorName').value : null,
                 reserved: false,
                 needsCollaboration: false,
                 reservedBy: null,
-                createdAt: new Date().toISOString()
+                createdAt: serverTimestamp()
             };
-            
-            saveItemToStorage(newItem);
-            closeAddModal();
-            loadItems();
+
+            try {
+                await addDoc(collection(db, 'lists', currentListId, 'items'), newItem);
+                closeAddModal();
+            } catch (error) {
+                console.error('Error al guardar:', error);
+                alert('Error al guardar el regalo. Inténtalo de nuevo.');
+            }
         }
 
         function openReserveModal(itemId) {
@@ -813,36 +886,39 @@
             currentItemId = null;
         }
 
-        function handleReserveItem(event) {
+        async function handleReserveItem(event) {
             event.preventDefault();
-            
+
             const name = document.getElementById('reserverName').value;
             const needsHelp = document.getElementById('needHelp').value === 'yes';
-            
-            const items = getItemsFromStorage();
-            const item = items.find(i => i.id === currentItemId);
-            
-            if (item) {
-                item.reserved = true;
-                item.reservedBy = name;
-                item.needsCollaboration = needsHelp;
-                localStorage.setItem('wishlist_' + currentListId, JSON.stringify(items));
+
+            try {
+                const itemRef = doc(db, 'lists', currentListId, 'items', currentItemId);
+                await updateDoc(itemRef, {
+                    reserved: true,
+                    reservedBy: name,
+                    needsCollaboration: needsHelp
+                });
+                closeReserveModal();
+            } catch (error) {
+                console.error('Error al reservar:', error);
+                alert('Error al reservar el regalo. Inténtalo de nuevo.');
             }
-            
-            closeReserveModal();
-            loadItems();
         }
 
-        function getItemsFromStorage() {
-            const data = localStorage.getItem('wishlist_' + currentListId);
-            return data ? JSON.parse(data) : [];
+        async function deleteItem(itemId) {
+            if (!confirm('¿Estás seguro de que quieres eliminar este regalo?')) {
+                return;
+            }
+
+            try {
+                await deleteDoc(doc(db, 'lists', currentListId, 'items', itemId));
+            } catch (error) {
+                console.error('Error al eliminar:', error);
+                alert('Error al eliminar el regalo. Inténtalo de nuevo.');
+            }
         }
 
-        function saveItemToStorage(item) {
-            const items = getItemsFromStorage();
-            items.push(item);
-            localStorage.setItem('wishlist_' + currentListId, JSON.stringify(items));
-        }
 
         function copyShareLink() {
             const input = document.getElementById('shareLink');

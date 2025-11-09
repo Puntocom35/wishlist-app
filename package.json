@@ -1,12 +1,23 @@
 {
   "name": "wishlist-app",
-  "version": "1.0.0",
-  "description": "Lista de deseos universal con colaboración familiar",
+  "version": "2.0.0",
+  "description": "Lista de deseos universal con colaboración familiar y sincronización en tiempo real",
   "scripts": {
-    "dev": "python3 -m http.server 8000",
-    "deploy": "vercel --prod"
+    "dev": "python3 -m http.server 8000 || python -m http.server 8000",
+    "deploy": "vercel --prod",
+    "test": "echo 'Abre http://localhost:8000/wishlist.html en tu navegador' && npm run dev"
   },
-  "keywords": ["wishlist", "gifts", "pwa"],
+  "keywords": [
+    "wishlist",
+    "gifts",
+    "pwa",
+    "firebase",
+    "realtime",
+    "collaborative"
+  ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "firebase": "^12.5.0"
+  }
 }

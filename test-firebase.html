@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Firebase - Wishlist App</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .status.pending { background: #fef3c7; color: #92400e; }
+        .status.success { background: #d1fae5; color: #065f46; }
+        .status.error { background: #fee2e2; color: #991b1b; }
+        .log {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .log-entry {
+            margin: 4px 0;
+        }
+        .log-entry.error { color: #fca5a5; }
+        .log-entry.success { color: #86efac; }
+        .log-entry.info { color: #93c5fd; }
+        h1 { color: #6366f1; }
+        h2 { font-size: 18px; margin-top: 0; }
+        button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        button:hover { background: #4f46e5; }
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test de Configuración Firebase</h1>
+
+    <div class="warning">
+        ⚠️ <strong>Antes de usar esta herramienta:</strong> Asegúrate de haber configurado tus credenciales de Firebase en <code>wishlist.html</code>
+    </div>
+
+    <div class="test-card">
+        <h2>1. Verificar Configuración</h2>
+        <p>Estado: <span class="status pending" id="status1">Esperando...</span></p>
+        <button onclick="testFirebaseConfig()">Probar Configuración</button>
+    </div>
+
+    <div class="test-card">
+        <h2>2. Conectar a Firestore</h2>
+        <p>Estado: <span class="status pending" id="status2">Esperando...</span></p>
+        <button onclick="testFirestoreConnection()">Probar Conexión</button>
+    </div>
+
+    <div class="test-card">
+        <h2>3. Escribir Dato de Prueba</h2>
+        <p>Estado: <span class="status pending" id="status3">Esperando...</span></p>
+        <button onclick="testWriteData()">Escribir Prueba</button>
+    </div>
+
+    <div class="test-card">
+        <h2>4. Leer Datos</h2>
+        <p>Estado: <span class="status pending" id="status4">Esperando...</span></p>
+        <button onclick="testReadData()">Leer Datos</button>
+    </div>
+
+    <div class="test-card">
+        <h2>5. Eliminar Dato de Prueba</h2>
+        <p>Estado: <span class="status pending" id="status5">Esperando...</span></p>
+        <button onclick="testDeleteData()">Eliminar Prueba</button>
+    </div>
+
+    <div class="test-card">
+        <h2>📋 Logs</h2>
+        <div class="log" id="logContainer"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        // ⚠️ IMPORTANTE: Estas credenciales deben coincidir con las de wishlist.html
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+            authDomain: "tu-proyecto.firebaseapp.com",
+            projectId: "tu-proyecto-id",
+            storageBucket: "tu-proyecto.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:xxxxxxxxxxxxx"
+        };
+
+        let app, db, testDocId;
+
+        function log(message, type = 'info') {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function setStatus(testNumber, status, message) {
+            const statusEl = document.getElementById(`status${testNumber}`);
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = message;
+        }
+
+        window.testFirebaseConfig = function() {
+            log('🔍 Probando configuración de Firebase...');
+
+            try {
+                // Verificar que las credenciales no sean las de ejemplo
+                if (firebaseConfig.apiKey === "AIzaSyBXXXXXXXXXXXXXXXXXXXXXXXXXXXX") {
+                    setStatus(1, 'error', '❌ Credenciales no configuradas');
+                    log('❌ ERROR: Las credenciales son las de ejemplo. Debes reemplazarlas con las tuyas.', 'error');
+                    log('👉 Abre este archivo (test-firebase.html) y actualiza firebaseConfig', 'info');
+                    log('👉 O mejor, copia las credenciales desde wishlist.html', 'info');
+                    return;
+                }
+
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+
+                setStatus(1, 'success', '✅ Configuración OK');
+                log('✅ Firebase inicializado correctamente', 'success');
+                log(`📦 Proyecto: ${firebaseConfig.projectId}`, 'info');
+
+            } catch (error) {
+                setStatus(1, 'error', '❌ Error en configuración');
+                log(`❌ ERROR: ${error.message}`, 'error');
+            }
+        };
+
+        window.testFirestoreConnection = async function() {
+            if (!db) {
+                log('⚠️ Primero ejecuta el Test 1', 'error');
+                return;
+            }
+
+            log('🔌 Intentando conectar a Firestore...');
+
+            try {
+                // Intentar obtener una referencia
+                const testRef = collection(db, 'test');
+
+                setStatus(2, 'success', '✅ Conectado');
+                log('✅ Conexión a Firestore establecida', 'success');
+
+            } catch (error) {
+                setStatus(2, 'error', '❌ Error de conexión');
+                log(`❌ ERROR: ${error.message}`, 'error');
+
+                if (error.code === 'permission-denied') {
+                    log('💡 Parece un problema de permisos. Revisa las reglas de Firestore.', 'info');
+                }
+            }
+        };
+
+        window.testWriteData = async function() {
+            if (!db) {
+                log('⚠️ Primero ejecuta los tests anteriores', 'error');
+                return;
+            }
+
+            log('✍️ Intentando escribir un dato de prueba...');
+
+            try {
+                const testData = {
+                    message: 'Test de configuración',
+                    timestamp: new Date().toISOString(),
+                    test: true
+                };
+
+                const docRef = await addDoc(collection(db, 'test'), testData);
+                testDocId = docRef.id;
+
+                setStatus(3, 'success', '✅ Escritura OK');
+                log(`✅ Dato escrito correctamente (ID: ${testDocId})`, 'success');
+                log('📝 Ahora ve a Firebase Console > Firestore > Datos', 'info');
+                log('   Deberías ver una colección "test" con este documento', 'info');
+
+            } catch (error) {
+                setStatus(3, 'error', '❌ Error al escribir');
+                log(`❌ ERROR: ${error.message}`, 'error');
+
+                if (error.code === 'permission-denied') {
+                    log('💡 ERROR DE PERMISOS. Solución:', 'error');
+                    log('   1. Ve a Firebase Console > Firestore > Reglas', 'info');
+                    log('   2. Verifica que tengas: allow read, write: true;', 'info');
+                    log('   3. Haz clic en "Publicar"', 'info');
+                }
+            }
+        };
+
+        window.testReadData = async function() {
+            if (!db) {
+                log('⚠️ Primero ejecuta los tests anteriores', 'error');
+                return;
+            }
+
+            log('📖 Intentando leer datos...');
+
+            try {
+                const querySnapshot = await getDocs(collection(db, 'test'));
+                const count = querySnapshot.size;
+
+                setStatus(4, 'success', `✅ Lectura OK (${count} docs)`);
+                log(`✅ Se leyeron ${count} documentos`, 'success');
+
+                querySnapshot.forEach((doc) => {
+                    log(`  📄 ${doc.id}: ${JSON.stringify(doc.data())}`, 'info');
+                });
+
+            } catch (error) {
+                setStatus(4, 'error', '❌ Error al leer');
+                log(`❌ ERROR: ${error.message}`, 'error');
+            }
+        };
+
+        window.testDeleteData = async function() {
+            if (!db || !testDocId) {
+                log('⚠️ Primero ejecuta el Test 3 (escribir dato)', 'error');
+                return;
+            }
+
+            log('🗑️ Intentando eliminar dato de prueba...');
+
+            try {
+                await deleteDoc(doc(db, 'test', testDocId));
+
+                setStatus(5, 'success', '✅ Eliminación OK');
+                log(`✅ Dato eliminado correctamente (ID: ${testDocId})`, 'success');
+
+            } catch (error) {
+                setStatus(5, 'error', '❌ Error al eliminar');
+                log(`❌ ERROR: ${error.message}`, 'error');
+            }
+        };
+
+        // Log inicial
+        log('🚀 Test de Firebase listo. Ejecuta los tests en orden.', 'info');
+        log('⚠️ Recuerda: Primero debes configurar tus credenciales de Firebase', 'info');
+    </script>
+</body>
+</html>
